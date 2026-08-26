@@ -2,8 +2,6 @@ from django.conf import settings
 from django.db import models
 from django.core.validators import RegexValidator
 
-# Create your models here.
-
 hex_color_validator = RegexValidator(
     regex=r'^#[0-9A-Fa-f]{6}$',
     message='Color must be a hex code like #ec4899.',
