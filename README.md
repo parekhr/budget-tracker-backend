@@ -1,4 +1,4 @@
-# Budget Tracker — Backend
+# Budget Tracker - Backend
 
 Django REST API powering [Budget Tracker](https://github.com/parekhr/budget-tracker-frontend) - a personal spending, budgeting, and monthly-summary app. Every dollar figure returned by this API is computed server-side; the frontend never re-derives totals from raw records.
 
