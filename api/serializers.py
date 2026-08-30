@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from .models import Category, Transaction, Budget
 from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
@@ -81,4 +82,43 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         except User.DoesNotExist:
             raise serializers.ValidationError('No account found with that email.')
         attrs[self.username_field] = user.username
-        return super().validate(attrs)
+        data = super().validate(attrs)
+        data['username'] = self.user.username
+        return data
+    
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_new_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_new_password']:
+            raise serializers.ValidationError({"confirm_new_password": "Passwords do not match."})
+        return data
+    
+class ChangeUsernameSerializer(serializers.Serializer):
+    new_username = serializers.CharField(min_length=3)
+
+    def validate_new_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value
+
+class CategoryBreakdownSerializer(serializers.Serializer):
+    category_id = serializers.IntegerField()
+    category_name = serializers.CharField()
+    color = serializers.CharField()
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+class BudgetVsActualSerializer(serializers.Serializer):
+    category_id = serializers.IntegerField()
+    category_name = serializers.CharField()
+    limit_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    spent_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+class SummarySerializer(serializers.Serializer):
+    total_spent = serializers.DecimalField(max_digits=10, decimal_places=2)
+    budgeted = serializers.DecimalField(max_digits=10, decimal_places=2)
+    remaining = serializers.DecimalField(max_digits=10, decimal_places=2)
+    spend_by_category = CategoryBreakdownSerializer(many=True)
+    budget_vs_actual = BudgetVsActualSerializer(many=True)

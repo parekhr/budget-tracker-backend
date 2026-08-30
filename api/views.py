@@ -1,10 +1,11 @@
+from django.db.models.aggregates import Sum
 from rest_framework import viewsets, generics
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from .models import Category, Transaction, Budget
-from .serializers import CategorySerializer, EmailTokenObtainPairSerializer, RegistrationSerializer, TransactionSerializer, BudgetSerializer
+from .serializers import CategorySerializer, ChangePasswordSerializer, ChangeUsernameSerializer, EmailTokenObtainPairSerializer, RegistrationSerializer, SummarySerializer, TransactionSerializer, BudgetSerializer
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -104,3 +105,62 @@ class PasswordResetConfirmView(generics.GenericAPIView):
 class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
 
+class ChangePasswordView(generics.GenericAPIView):
+    serializer_class = ChangePasswordSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if not request.user.check_password(serializer.validated_data['current_password']):
+            return Response({'detail': 'Current password is incorrect.'}, status=400)
+
+        request.user.set_password(serializer.validated_data['new_password'])
+        request.user.save()
+        return Response({'detail': 'Password changed successfully.'})
+
+class ChangeUsernameView(generics.GenericAPIView):
+    serializer_class = ChangeUsernameSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        new_username = serializer.validated_data['new_username']
+        request.user.username = new_username
+        request.user.save()
+        return Response({'detail': 'Username changed successfully.', 'username': new_username})
+
+class SummaryView(generics.GenericAPIView):
+    serializer_class = SummarySerializer
+
+    def get(self, request, *args, **kwargs):
+        month = request.query_params.get('month')
+        user = request.user
+
+        transactions = Transaction.objects.filter(user=request.user, date__startswith=month)
+        budgets = Budget.objects.filter(user=request.user, month=month)
+
+        total_spent = transactions.aggregate(total=Sum('amount'))['total'] or 0
+        budgeted = budgets.aggregate(total=Sum('limit_amount'))['total'] or 0
+        remaining = budgeted - total_spent
+
+        grouped = transactions.values('category', 'category__name', 'category__color').annotate(total=Sum('amount'))
+
+        data = {
+            "total_spent": total_spent,
+            "budgeted": budgeted,
+            "remaining": remaining,
+            "spend_by_category": [
+                {"category_id": g['category'], "category_name": g['category__name'], "color": g['category__color'], "amount": g['total']} for g in grouped
+            ],
+            "budget_vs_actual": [
+                {"category_id": b.category_id, "category_name": b.category.name, "limit_amount": b.limit_amount, "spent_amount": transactions.filter(category_id=b.category_id).aggregate(total=Sum('amount'))['total'] or 0} for b in budgets
+            ]
+        }
+        serializer = self.get_serializer(data)
+        return Response(serializer.data)
+
+class UsernameView(generics.GenericAPIView):
+    def get(self, request, *args, **kwargs):
+        return Response({'username': request.user.username})
