@@ -58,10 +58,8 @@ venv\Scripts\activate   # Windows
 ### 2. Install dependencies
 
 ```bash
-pip install django djangorestframework djangorestframework-simplejwt psycopg2-binary django-cors-headers python-dotenv djangorestframework-camel-case
+pip install -r requirements.txt
 ```
-
-> A pinned `requirements.txt` isn't generated yet — `pip freeze > requirements.txt` from an activated venv before deploying or handing this off.
 
 ### 3. Environment variables
 
