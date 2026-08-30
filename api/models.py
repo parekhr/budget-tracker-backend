@@ -11,6 +11,7 @@ class Category(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='categories')
     name = models.CharField(max_length=100)
     color = models.CharField(max_length=7, validators=[hex_color_validator])  # Hex color code
+    is_default = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -76,6 +76,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PARSER_CLASSES': (
         'djangorestframework_camel_case.parser.CamelCaseJSONParser',
     ),
+    'COERCE_DECIMAL_TO_STRING': False,
 }
 
 TEMPLATES = [

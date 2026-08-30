@@ -1,11 +1,13 @@
 from django.db.models.aggregates import Sum
+from django.db import transaction
 from rest_framework import viewsets, generics
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth.models import User
 from .models import Category, Transaction, Budget
-from .serializers import CategorySerializer, ChangePasswordSerializer, ChangeUsernameSerializer, EmailTokenObtainPairSerializer, RegistrationSerializer, SummarySerializer, TransactionSerializer, BudgetSerializer
+from .serializers import CategorySerializer, ChangePasswordSerializer, ChangeUsernameSerializer, EmailTokenObtainPairSerializer, RegistrationSerializer, SummarySerializer, TransactionSerializer, BudgetSerializer, TrendPointSerializer
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -21,6 +23,19 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        if serializer.instance.is_default:
+            raise PermissionDenied("Default category cannot be updated.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.is_default:
+            raise PermissionDenied("Default category cannot be deleted.")
+        default_category = Category.objects.get(user=self.request.user, is_default=True)
+        with transaction.atomic():
+            instance.transactions.update(category=default_category)
+            instance.delete()
 
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
@@ -49,6 +64,7 @@ class RegistrationView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        Category.objects.create(user=user, name="Uncategorized", color="#6b7280", is_default=True)
 
         refresh = RefreshToken.for_user(user)
         return Response({
@@ -164,3 +180,27 @@ class SummaryView(generics.GenericAPIView):
 class UsernameView(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         return Response({'username': request.user.username})
+
+class TrendsView(generics.GenericAPIView):
+    serializer_class = TrendPointSerializer
+
+    def get(self, request, *args, **kwargs):
+        months = int(request.query_params.get('months'))
+        end_month = request.query_params.get('endMonth')
+        end_year, end_month_num = map(int, end_month.split('-'))
+        end_total_months = end_year * 12 + (end_month_num - 1)
+
+        points = []
+        for i in range(months - 1, -1, -1):
+            total_months = end_total_months - i
+            year, month_index = divmod(total_months, 12)
+            period = f"{year}-{month_index + 1:02d}"
+
+            total_spent = Transaction.objects.filter(
+                user=request.user, date__startswith=period
+            ).aggregate(total=Sum('amount'))['total'] or 0
+
+            points.append({'period': period, 'total_spent': total_spent})
+
+        serializer = self.get_serializer(points, many=True)
+        return Response(serializer.data)

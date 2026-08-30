@@ -9,9 +9,10 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'user', 'name', 'color', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'name', 'color', 'is_default', 'created_at', 'updated_at']
         extra_kwargs = {
-            'user': {'read_only': True}
+            'user': {'read_only': True},
+            'is_default': {'read_only': True}
         }
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -122,3 +123,7 @@ class SummarySerializer(serializers.Serializer):
     remaining = serializers.DecimalField(max_digits=10, decimal_places=2)
     spend_by_category = CategoryBreakdownSerializer(many=True)
     budget_vs_actual = BudgetVsActualSerializer(many=True)
+
+class TrendPointSerializer(serializers.Serializer):
+    period = serializers.CharField()
+    total_spent = serializers.DecimalField(max_digits=10, decimal_places=2)
