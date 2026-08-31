@@ -79,8 +79,6 @@ EMAIL_HOST_PASSWORD=your-gmail-app-password
 
 `EMAIL_HOST_PASSWORD` is a [Gmail App Password](https://myaccount.google.com/apppasswords), not your regular account password.
 
-> Note: `SECRET_KEY` is currently hardcoded in `config/settings.py` for local development - this needs to move to an environment variable before this is ever deployed publicly.
-
 ### 4. Start PostgreSQL
 
 ```bash
