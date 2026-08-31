@@ -24,3 +24,5 @@ stack-data==0.6.3
 traitlets==5.16.1
 tzdata==2026.3
 wcwidth==0.8.2
+whitenoise==6.5.0
+gunicorn==20.1.0
