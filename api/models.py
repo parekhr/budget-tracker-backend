@@ -1,6 +1,7 @@
+from decimal import Decimal
 from django.conf import settings
 from django.db import models
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MinValueValidator
 
 hex_color_validator = RegexValidator(
     regex=r'^#[0-9A-Fa-f]{6}$',
@@ -19,7 +20,7 @@ class Transaction(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transactions')
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='transactions')
     title = models.CharField(max_length=200)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
     date = models.DateField()
     additional_notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -29,7 +30,7 @@ class Budget(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='budgets')
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='budgets')
     month = models.CharField(max_length=7)  # Format: YYYY-MM
-    limit_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    limit_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
